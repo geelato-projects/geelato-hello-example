@@ -1,0 +1,59 @@
+# PID files directory
+.pids/
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+target/
+.nuxt/
+.output/
+.nitro/
+coverage/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Cache
+.cache/
+.temp/
+.tmp/
+tmp/
+.trae-tmp/
+.turbo/
+.vite/
+.eslintcache
+
+# Test artifacts
+test-results/
+playwright-report/
+blob-report/
+__screenshots__/
+screenshots/
+cypress/screenshots/
+cypress/videos/
+
+# Local invalid artifacts
+demo/nul
