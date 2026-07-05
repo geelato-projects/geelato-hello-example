@@ -107,7 +107,7 @@ const showToast = (text: string) => {
   toastText.value = text
   window.setTimeout(() => {
     if (toastText.value === text) toastText.value = ''
-  }, 1600)
+  }, 2600)
 }
 
 const onMessage = (event: MessageEvent) => {
@@ -298,7 +298,9 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .page { max-width: 1040px; margin: 0 auto; padding: 28px 18px 60px; }
-.toast { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); padding: 10px 14px; border-radius: 999px; border: 1px solid var(--accent-border); background: var(--accent-bg); color: var(--text-h); box-shadow: var(--shadow); z-index: 20; font-size: 13px; }
+.toast { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); padding: 12px 16px; border-radius: 999px; border: 1px solid rgba(34, 197, 94, 0.55); background: rgba(34, 197, 94, 0.15); color: var(--text-h); box-shadow: 0 10px 30px rgba(0,0,0,0.18); z-index: 40; font-size: 14px; font-weight: 650; letter-spacing: 0.2px; display: inline-flex; align-items: center; gap: 10px; animation: toast-in 160ms ease-out; }
+.toast::before { content: ''; width: 10px; height: 10px; border-radius: 999px; background: rgba(34, 197, 94, 0.9); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.18); }
+@keyframes toast-in { from { transform: translateX(-50%) translateY(-8px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
 .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 30; display: flex; align-items: center; justify-content: center; padding: 18px; }
 .modal { width: min(980px, 100%); max-height: min(82vh, 980px); overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: var(--bg); box-shadow: var(--shadow); display: flex; flex-direction: column; }
 .modal-head { padding: 14px 14px 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--border); }
