@@ -113,6 +113,10 @@ const reset = () => {
 
     <div class="card">
       <div class="card-title">集成配置</div>
+      <div class="help-block">
+        真实接入时，业务系统可以直接从 `postMessage` 的 `LOGIN_SUCCESS` 消息中拿到 `accessToken`，再调用
+        `liteLoginBaseUrl` 所属认证服务的 userinfo 接口获取用户身份。
+      </div>
       <div class="row">
         <label>liteLoginBaseUrl *</label>
         <div>
@@ -159,7 +163,9 @@ const reset = () => {
         <div>
           <input v-model="form.apiBase" placeholder="可选，例如 http://localhost:8080" />
           <div class="help">
-            第三方应用后端基地址。演示页点击“调用当前用户接口”会向该地址发请求，并携带 Authorization: Bearer &lt;accessToken&gt;。
+            这是 demo 用的“业务系统当前用户接口”地址。真实接入时，通常是先从 `postMessage` 拿到 accessToken，
+            再调用 lite-login 所在认证服务的 <span class="mono">/oauth2/userinfo?access_token=%s</span>
+            获取当前用户身份。
           </div>
         </div>
       </div>
@@ -228,6 +234,7 @@ button.ghost { padding: 6px 10px; border-radius: 10px; }
 .mono { font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
 .hint { margin-top: 8px; font-size: 12px; opacity: 0.8; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .help { margin-top: 7px; font-size: 12px; opacity: 0.78; line-height: 1.55; }
+.help-block { margin-bottom: 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--code-bg); font-size: 12px; line-height: 1.7; color: var(--text-h); }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .kv-title { font-size: 12px; opacity: 0.8; margin-bottom: 8px; }
 .codebox { border: 1px solid var(--border); border-radius: 14px; padding: 12px; background: var(--code-bg); display: grid; gap: 10px; }

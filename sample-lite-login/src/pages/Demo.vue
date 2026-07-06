@@ -110,16 +110,49 @@ const showToast = (text: string) => {
   }, 2600)
 }
 
+const isAllowedMessageOrigin = (expectedOrigin: string, actualOrigin: string): boolean => {
+  if (actualOrigin === expectedOrigin) return true
+  try {
+    const expected = new URL(expectedOrigin)
+    const actual = new URL(actualOrigin)
+    return expected.protocol === 'http:' &&
+      actual.protocol === 'https:' &&
+      expected.hostname === actual.hostname &&
+      expected.port === actual.port
+  } catch (e) {
+    return false
+  }
+}
+
 const onMessage = (event: MessageEvent) => {
   if (!cfg) return
-  if (event.origin !== cfg.liteSsoOrigin) return
+  if (!isAllowedMessageOrigin(cfg.liteSsoOrigin, event.origin)) {
+    console.warn('[sample-lite-login] ignore message: unexpected origin', {
+      expectedOrigin: cfg.liteSsoOrigin,
+      actualOrigin: event.origin,
+      data: event.data
+    })
+    return
+  }
+  if (event.origin !== cfg.liteSsoOrigin) {
+    console.debug('[sample-lite-login] accept message: protocol upgraded to https', {
+      expectedOrigin: cfg.liteSsoOrigin,
+      actualOrigin: event.origin
+    })
+  }
 
   const msg = parseLiteSsoMessage(event.data)
   lastMessage.value = JSON.stringify({origin: event.origin, data: event.data}, null, 2)
+  console.debug('[sample-lite-login] received message', {
+    origin: event.origin,
+    type: msg?.type,
+    rawData: event.data
+  })
 
   if (msg?.type === 'OAUTH2_LOGIN') {
     const url = (msg.data as any)?.url
     if (typeof url === 'string' && url) {
+      console.debug('[sample-lite-login] opening OAuth2 login popup', {url})
       window.open(url, 'OAuth2Login')
     }
     return
@@ -131,6 +164,20 @@ const onMessage = (event: MessageEvent) => {
   }
 
   const token = resolveAccessToken(msg)
+  if (!msg) {
+    console.warn('[sample-lite-login] ignore message: invalid payload shape', {
+      origin: event.origin,
+      rawData: event.data
+    })
+    return
+  }
+  if (!token) {
+    console.warn('[sample-lite-login] message received but no access token resolved', {
+      type: msg.type,
+      data: msg.data
+    })
+    return
+  }
   if (token) {
     accessToken.value = token
     localStorage.setItem('sample-lite-login.accessToken', token)
@@ -146,6 +193,10 @@ const sendLoginInit = () => {
   if (!cfg) return
   const win = iframeRef.value?.contentWindow
   if (!win) return
+  console.debug('[sample-lite-login] post LOGIN_INIT to iframe', {
+    targetOrigin: cfg.liteSsoOrigin,
+    src: embeddedSrc.value
+  })
   win.postMessage({type: 'LOGIN_INIT'}, cfg.liteSsoOrigin)
 }
 
@@ -249,6 +300,12 @@ onBeforeUnmount(() => {
 
     <div class="card">
       <div class="card-title">演示操作</div>
+      <div class="desc">
+        当前页面演示的是嵌入登录和接收 `LOGIN_SUCCESS(accessToken, ...)`。真实接入时，业务系统可以直接从
+        `postMessage` 拿到 accessToken，再调用 `liteLoginBaseUrl` 所属认证服务的 userinfo 接口获取当前用户。
+        示例调用形式：
+        <span class="mono">String url = String.format(&quot;%s/oauth2/userinfo?access_token=%s&quot;, baseUrl, accessToken)</span>
+      </div>
       <div class="actions">
         <button class="primary" @click="openEmbedded">加载 iframe</button>
         <button class="primary" @click="openPopup">打开 popup</button>
@@ -268,6 +325,7 @@ onBeforeUnmount(() => {
           <div class="metric-title">apiBase / meEndpoint</div>
           <div class="metric-value mono">{{ cfg?.apiBase || '-' }}</div>
           <div class="metric-sub mono">{{ cfg?.meEndpoint || '-' }}</div>
+          <div class="metric-sub">这里是 demo 自定义的业务接口；真实接入一般直接调用 lite-login 的 `/oauth2/userinfo`。</div>
           <div class="metric-actions">
             <button class="ghost" :disabled="!meResult" @click="meOpen = true">查看响应</button>
           </div>
@@ -312,6 +370,7 @@ onBeforeUnmount(() => {
 .subtitle { margin-top: 8px; font-size: 13px; opacity: 0.8; }
 .card { margin-top: 18px; padding: 16px 16px 18px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg); box-shadow: var(--shadow); }
 .card-title { font-size: 14px; font-weight: 650; color: var(--text-h); opacity: 0.9; margin-bottom: 10px; }
+.desc { margin-bottom: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--code-bg); font-size: 12px; line-height: 1.7; color: var(--text-h); }
 .actions { display: flex; gap: 12px; flex-wrap: wrap; }
 button { padding: 9px 12px; border-radius: 12px; border: 1px solid var(--border); background: transparent; cursor: pointer; color: var(--text-h); }
 button:disabled { opacity: 0.5; cursor: not-allowed; }

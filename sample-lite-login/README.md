@@ -2,6 +2,10 @@
 
 用于演示第三方应用以 iframe + popup 两种方式集成 `lite-login`（`gl-lite-sso` 门面），并通过 `postMessage` 接收 `LOGIN_SUCCESS(accessToken, ...)`。
 
+如果业务系统需要获取当前用户身份，通常可以直接从 `postMessage` 返回的 `LOGIN_SUCCESS` 消息中拿到 `accessToken`，再调用 `lite-login` 所属认证服务的 userinfo 接口，而不是直接依赖本地 demo 接口。示例：
+
+`String url = String.format("%s/oauth2/userinfo?access_token=%s", baseUrl, accessToken)`
+
 ## 运行
 
 ```bash
