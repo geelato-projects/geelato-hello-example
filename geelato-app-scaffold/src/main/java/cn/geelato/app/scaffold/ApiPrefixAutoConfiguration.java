@@ -1,6 +1,7 @@
 package cn.geelato.app.scaffold;
 
 import cn.geelato.web.common.annotation.ApiRuntimeRestController;
+import cn.geelato.web.common.annotation.ApiRestController;
 import cn.geelato.web.common.annotation.DesignTimeApiRestController;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.AnnotatedElementUtils;
@@ -13,6 +14,7 @@ public class ApiPrefixAutoConfiguration implements WebMvcConfigurer {
     public void configurePathMatch(PathMatchConfigurer configurer) {
         configurer.addPathPrefix("/api", handlerType ->
                 AnnotatedElementUtils.findMergedAnnotation(handlerType, ApiRuntimeRestController.class) != null
-                        || AnnotatedElementUtils.findMergedAnnotation(handlerType, DesignTimeApiRestController.class) != null);
+                        || AnnotatedElementUtils.findMergedAnnotation(handlerType, DesignTimeApiRestController.class) != null
+                        || AnnotatedElementUtils.findMergedAnnotation(handlerType, ApiRestController.class) != null);
     }
 }
