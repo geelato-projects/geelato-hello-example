@@ -1,6 +1,6 @@
 package cn.geelato.sample.orm.web;
 
-import cn.geelato.orm.Filter;
+import cn.geelato.orm.query.Filter;
 import cn.geelato.orm.MetaFactory;
 import cn.geelato.sample.orm.entity.SampleUserEntity;
 import org.springframework.web.bind.annotation.GetMapping;
