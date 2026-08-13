@@ -116,6 +116,68 @@ public class SampleOrmCrudController {
     }
 
     /**
+     * 对象化保存示例：直接传入实体对象。
+     * 不传 id → 插入（主键自动生成）；传 id → 按主键更新。演示 {@link MetaFactory#save(Object)}。
+     */
+    @GetMapping("/api/orm/user/save")
+    public Map<String, Object> saveByObject(@RequestParam(required = false) String id,
+                                            @RequestParam(required = false) String name,
+                                            @RequestParam(required = false) String email,
+                                            @RequestParam(required = false, defaultValue = "1") Integer status) {
+        SampleUserEntity user = new SampleUserEntity();
+        user.setId(id);
+        user.setName(name);
+        user.setEmail(email);
+        user.setStatus(status);
+        String pk = MetaFactory.save(user);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("action", (id == null || id.isBlank()) ? "save(entity)-insert" : "save(entity)-update");
+        result.put("id", pk);
+        return result;
+    }
+
+    /**
+     * 对象化冒烟测试：用实体对象走一遍 save(插入) → query(按例) → save(更新) → query → delete，
+     * 对比 {@link #crud()} 的字段名版写法，演示 {@code MetaFactory.save/query(entity)} 的简洁。
+     */
+    @GetMapping("/api/orm/crud-object")
+    public Map<String, Object> crudObject() {
+        // 1) 主键为空 → 插入：直接传入实体对象
+        SampleUserEntity user = new SampleUserEntity();
+        user.setName("Alice");
+        user.setEmail("alice@example.com");
+        user.setStatus(1);
+        String id = MetaFactory.save(user);
+
+        // 2) 按例查询：用另一个只设了 id 的对象作为等值条件
+        SampleUserEntity example = new SampleUserEntity();
+        example.setId(id);
+        Map<String, Object> beforeUpdate = MetaFactory.query(example).one();
+
+        // 3) 主键非空 → 按主键更新：同一个对象改属性后再 save
+        user.setName("Bob");
+        user.setEmail("bob@example.com");
+        MetaFactory.save(user);
+
+        Map<String, Object> afterUpdate = MetaFactory.query(SampleUserEntity.class)
+                .where(Filter.eq("id", id))
+                .one();
+
+        // 删除仍用原生 SQL：本实体为精简 IdEntity，无逻辑删除列
+        int deleted = MetaFactory.sql("delete from sample_user where id = ?")
+                .param(id)
+                .execute();
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("action", "crud-object");
+        payload.put("insertedId", id);
+        payload.put("beforeUpdate", beforeUpdate);
+        payload.put("afterUpdate", afterUpdate);
+        payload.put("deleted", deleted);
+        return payload;
+    }
+
+    /**
      * 一气呵成冒烟测试：insert → query → update → query → delete → count，
      * 用于一次性验证基础 DSL 链路是否正常。
      */

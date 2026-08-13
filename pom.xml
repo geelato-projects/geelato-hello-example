@@ -37,6 +37,7 @@
         <module>geelato-sample-quickstart</module>
         <module>geelato-sample-orm</module>
         <module>geelato-sample-orm-event</module>
+        <module>geelato-sample-auth</module>
         <module>gl-sk-build</module>
     </modules>
 </project>

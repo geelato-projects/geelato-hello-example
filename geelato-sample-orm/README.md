@@ -15,6 +15,8 @@ Geelato ORM（Fluent DSL `MetaFactory`）示例工程。基于最轻量的 `geel
 | 列表 / 单条 | `.list()` / `.where(...).one()` | |
 | 分页 | `.select(...).order(...).page(n,s).page()` | 返回 `PageResult` |
 | 更新 / 删除 | `MetaFactory.update/delete` | |
+| 对象化保存 | `MetaFactory.save(entity)` | `/api/orm/user/save`、`/api/orm/crud-object`：主键空→插入，非空→按主键更新 |
+| 按例查询 | `MetaFactory.query(entity)` | 非空属性作为等值条件 |
 
 ### 高级方法（`/api/orm/adv/*`）
 
@@ -77,6 +79,13 @@ curl "http://localhost:8082/api/orm/user/list"
 curl "http://localhost:8082/api/orm/user/page?page=1&size=10"
 curl "http://localhost:8082/api/orm/user/update?id=<id>&name=Tom2"
 curl "http://localhost:8082/api/orm/user/delete?id=<id>"
+
+# 对象化保存（主键空 → 插入）
+curl "http://localhost:8082/api/orm/user/save?name=Tom&email=tom@a.com&status=1"
+# 对象化保存（带 id → 按主键更新）
+curl "http://localhost:8082/api/orm/user/save?id=<id>&name=Tom2"
+# 对象化冒烟测试：save(插入) → query(按例) → save(更新) → delete
+curl "http://localhost:8082/api/orm/crud-object"
 ```
 
 ### 4. 高级方法（先 seed 造数）
