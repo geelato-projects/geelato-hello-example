@@ -63,13 +63,20 @@ description: "Guides creating Geelato business projects from `geelato-app-scaffo
             <artifactId>geelato-app-scaffold-starter</artifactId>
         </dependency>
         <dependency>
-            <groupId>mysql</groupId>
+            <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
             <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 </project>
 ```
+
+> **制品仓库前置**：`cn.geelato:1.0.0-SNAPSHOT` 制品通过私有仓库（packages.aliyun.com）分发，未配置仓库与凭证时构建报 `Non-resolvable import POM`。配置方法见官方指南「制品仓库与凭证」章节：https://docs.geelato.cn/docs/guide/app-scaffold-starter-project-guide
 
 ## 启动类模板（继承 `BootApplication`）
 
@@ -119,10 +126,7 @@ geelato.upload.root-directory=/upload
 geelato.upload.convert-directory=/upload/convert
 geelato.upload.config-directory=/upload/config
 
-geelato.app.scaffold.enabled=true
 geelato.app.scaffold.auto-init-tables=true
-geelato.app.scaffold.strict=true
-geelato.app.scaffold.capabilities=login,mql,organization,user,dictionary,upload
 
 springdoc.api-docs.enabled=true
 springdoc.api-docs.path=/v3/api-docs
@@ -152,7 +156,7 @@ flush privileges;
 - `geelato-web-runtime` 自带的运行时基础 SQL
 - `geelato-app-scaffold-starter` 与业务工程自己 `geelato/app/scaffold/init/*.sql`
 
-脚手架默认会初始化一条 `platform_user`（登录名 `gl_user`，租户 `geelato`），仅用于首次验证登录链路。
+脚手架默认会初始化一条 `platform_user`（登录名 `gl_user`，租户 `geelato`），仅用于首次验证登录链路。初始脚本未预设可用明文口令，登录前先执行口令重置 SQL（见第 3 节验证）。
 
 ## 启动与验证
 
@@ -194,7 +198,8 @@ java -jar target/acme-order-center-1.0.0-SNAPSHOT.jar
 
 - `Started AcmeOrderApplication in X.XXX seconds`
 - 出现 `Tomcat started on port(s): 8088 (http)`
-- `Geelato app scaffold capabilities: login,mql,organization,user,dictionary,upload`
+
+首次启动日志中以下 ERROR 属预期，不代表失败：动态数据源表不存在的查询失败（自动建表前）、插件目录缺失提示、OpenCV 原生库提示。
 
 ### 2. 第一步验证：starter 是否就绪
 
@@ -202,38 +207,53 @@ java -jar target/acme-order-center-1.0.0-SNAPSHOT.jar
 curl http://localhost:8088/api/scaffold/ready
 ```
 
-期望响应（结构示例，字段以实际返回为准）：
+期望响应（成功码为 `20000`，`database` 为字符串 `"ready"` 表示主库连通）：
 
 ```json
 {
-  "code": 200,
+  "msg": "app scaffold starter is ready",
+  "code": 20000,
+  "status": "ok",
   "data": {
-    "appName": "acme-order-center",
+    "app": "acme-order-center",
     "starter": "geelato-app-scaffold-starter",
-    "capabilities": ["login","mql","organization","user","dictionary","upload"],
-    "primary": { "ready": true }
-  }
+    "capabilities": ["login","mql","organization","user","dictionary","notice","upload","app","schedule","sql","script","site","export","model","ddl"],
+    "database": "ready"
+  },
+  "cache": null
 }
 ```
 
-若 `primary.ready=false`，先解决 DB 连通问题，不要继续往下走。
+若 `database` 非 `ready`，先解决 DB 连通问题，不要继续往下走。
 
 ### 3. 第二步验证：登录
 
-**JWT 登录**：
+**先重置 gl_user 口令**（初始脚本未预设可用明文，执行后口令为 `Geelato@2026`）：
+
+```sql
+UPDATE platform_user
+SET password = 'e7c3f13e711f5a0a95675761b8d9a8e2b97e8e43',
+    salt = 'def8ff5614e0892f'
+WHERE login_name = 'gl_user' AND tenant_code = 'geelato';
+```
+
+**JWT 登录**（请求体字段为 `username` / `tenant`，与 `LoginParams` 定义一致，**不是** `loginName` / `tenantCode`）：
 
 ```bash
 curl -X POST http://localhost:8088/api/user/login \
   -H "Content-Type: application/json" \
-  -d "{\"loginName\":\"gl_user\",\"password\":\"<默认密码>\",\"tenantCode\":\"geelato\"}"
+  -d "{\"username\":\"gl_user\",\"password\":\"Geelato@2026\",\"tenant\":\"geelato\"}"
 ```
 
-期望响应：
+期望响应（`code=20000`，`data.token` 为后续鉴权凭证）：
 
 ```json
 {
-  "code": 200,
-  "data": { "token": "eyJhbGciOi..." }
+  "msg": "认证成功!",
+  "code": 20000,
+  "status": "ok",
+  "data": { "token": "eyJhbGciOi...", "...": "登录用户信息" },
+  "cache": null
 }
 ```
 
@@ -243,15 +263,13 @@ curl -X POST http://localhost:8088/api/user/login \
 Authorization: JWTBearer eyJhbGciOi...
 ```
 
-**OAuth2 登录**（如果启用）：
+**OAuth2 登录**（如启用，为授权码模式，入参是授权码 `code`，不是账号口令）：
 
 ```bash
-curl -X POST http://localhost:8088/api/oauth2/login \
-  -H "Content-Type: application/json" \
-  -d "{\"username\":\"gl_user\",\"password\":\"<默认密码>\",\"tenantCode\":\"geelato\"}"
+curl -X POST "http://localhost:8088/api/oauth2/login?code={授权码}"
 ```
 
-Header 改为 `Authorization: Bearer <accessToken>`。
+Header 改为 `Authorization: Bearer <accessToken>`；刷新用 `POST /api/oauth2/refreshToken?oldToken={旧token}`。
 
 ### 4. 第三步验证：MQL 通用 CRUD
 
@@ -277,8 +295,9 @@ curl -X POST http://localhost:8088/api/meta/delete2/1 \
 ### 5. 第四步验证：内置能力
 
 ```bash
-# 字典（通常无需鉴权）
-curl http://localhost:8088/api/dictionary/<code>
+# 字典（需鉴权，注意实际路径为 /api/system/dictionary/{code}）
+curl http://localhost:8088/api/system/dictionary/<code> \
+  -H "Authorization: JWTBearer $TOKEN"
 
 # 字典分页
 curl -X POST http://localhost:8088/api/dict/pageQuery \
@@ -328,7 +347,7 @@ curl -X POST http://localhost:8088/api/meta/save/1 \
 curl -X POST http://localhost:8088/api/meta/delete/1/<id>
 ```
 
-返回 `code:200` 且 `data` 含主键或行数据，即视为跑通。
+返回 `code:20000` 且 `data` 含主键或行数据，即视为跑通。
 
 ### 7. 可选验证：OpenAPI / Swagger
 
@@ -402,7 +421,7 @@ public class Customer extends BaseSortableEntity implements EntityEnableAble {
 | 下载文件 | `GET /api/resources/file` |
 | 下载配置 | `GET /api/resources/json?fileName={hostname}_{locale}.config` |
 | OSS（按需） | `/api/oss/*`（需配置 `geelato.oss.*`） |
-| 字典 | `/api/dict/*`、`/api/dictItem/*`、`GET /api/dictionary/{code}` |
+| 字典 | `/api/dict/*`、`/api/dictItem/*`、`GET /api/system/dictionary/{code}` |
 | 组织/用户/角色/权限 | `/api/security/{org,user,role,permission}/*` |
 | ORM Fluent DSL（后端） | `MetaFactory.query("User").select(...).page(1,10).list()` |
 | Swagger | `GET /v3/api-docs`、`/swagger-ui/index.html` |
@@ -431,7 +450,7 @@ public class Customer extends BaseSortableEntity implements EntityEnableAble {
 5. 生成 `application.properties`（含 `geelato.meta.scan-package-names` / `geelato.graal.scan-package-names` 业务包；含数据源与 upload 目录）
 6. 提供建库 SQL 模板，并提示手工建好 upload 目录
 7. **执行启动命令**，等待 `Started AcmeOrderApplication` 日志
-8. **验证 `/api/scaffold/ready`** 返回 `code:200` 且 `primary.ready=true`
+8. **验证 `/api/scaffold/ready`** 返回 `code:20000` 且 `database=="ready"`
 9. **验证登录** `/api/user/login` 拿到 token
 10. **验证 MQL** `/api/meta/list` 正常返回
 11. **验证字典/组织/用户/上传** 至少一个内置能力
@@ -439,7 +458,7 @@ public class Customer extends BaseSortableEntity implements EntityEnableAble {
 13. 提示 auto-init-tables 不负责后续迁移
 14. 提示升级路径：先 BOM，再 starter
 
-**完成判定**：上述 8~11 全部 `code:200` 即视为"跑通、接口可访问"。**不要在未跑通前交付**。
+**完成判定**：上述 8~11 全部 `code:20000` 即视为"跑通、接口可访问"。**不要在未跑通前交付**。
 
 ## 故障排查速查表（端到端跑不通时按此排查）
 
@@ -450,7 +469,7 @@ public class Customer extends BaseSortableEntity implements EntityEnableAble {
 | 启动报 `Access denied for user` | 账号密码 / grant | 重新执行 grant 脚本并 `flush privileges` |
 | 登录返回 `account user not found` | `tenantCode` 缺失或租户不匹配 | 登录请求体带上 `"tenantCode":"geelato"`，或匹配实际租户编码 |
 | 登录返回 `captcha required` | 启用登录验证码的能力 | 脚手架默认未强制校验；如出现，参考 captcha 配置或先关掉该能力 |
-| 登录返回 `password error` | 默认密码策略 | 参考脚手架初始化脚本中 `gl_user` 的密码策略，或自行 reset |
+| 登录返回 `账号或密码不正确`（`code=-2`） | 口令未重置或请求体字段名错误 | 先执行第 3 节口令重置 SQL；字段名用 `username`/`tenant`（不是 `loginName`/`tenantCode`） |
 | 业务实体 MQL 查不到 | `geelato.meta.scan-package-names` / `geelato.graal.scan-package-names` 漏配 | 把业务包加进两个配置并重启 |
 | 业务实体 MQL 报 `Table not exist` | 建表脚本未执行 | 确认 SQL 路径在 `geelato/app/scaffold/init/` 且文件名 == `@Entity(name=)`；首次启动才会建 |
 | 启动报 `ClassNotFoundException` / `NoSuchMethodError` | BOM 与 starter 版本不一致 | 升级 `geelato-framework-bom` 与 `geelato-app-scaffold-starter` 到同一版本 |

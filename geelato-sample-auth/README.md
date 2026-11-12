@@ -56,7 +56,7 @@ demo.permission.data.enabled=true
 |---|---|---|---|
 | GET | `/api/sample-auth/public` | 无 | 存活检查 |
 | POST | `/api/sample-auth/login` | 无 | 便捷登录代理（转发认证中心，返回 accessToken） |
-| GET | `/api/sample-auth/me` | Bearer | 回显当前用户 + funcPermissions/roleCodes |
+| GET | `/api/sample-auth/me` | Bearer | 回显当前用户 + functionPermissions(code)/roleCodes |
 | GET | `/api/sample-auth/orders` | Bearer | **数据权限**：查询 demo_order，注入器按规则过滤；返回行 + 本次生效 where |
 | GET | `/api/sample-auth/orders/export` | Bearer + `order:export` | **功能权限** |
 | POST | `/api/sample-auth/orders/approve` | Bearer + `order:approve` | **功能权限** |

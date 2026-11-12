@@ -2,7 +2,7 @@ package cn.geelato.sample.auth.permission;
 
 import cn.geelato.sample.auth.config.DemoAuthProperties;
 import cn.geelato.sample.auth.permission.dto.ProvisioningPayloadDto;
-import cn.geelato.sample.auth.permission.dto.ProvisioningPayloadDto.PermissionRuntimeDto;
+import cn.geelato.sample.auth.permission.dto.ProvisioningPayloadDto.PermissionItemDto;
 import cn.geelato.security.Permission;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -53,7 +53,7 @@ public class ProvisioningService {
                     payload.appCode() != null ? payload.appCode() : effectiveApp,
                     payload.tenantCode() != null ? payload.tenantCode() : tenantCode);
             UserPermissionSnapshot snap = new UserPermissionSnapshot(
-                    orEmpty(payload.funcPermissions()), dps, orEmpty(payload.roleCodes()));
+                    codesOf(payload.functionPermissions()), dps, orEmpty(payload.roleCodes()));
             cache.putSnapshot(userId, snap);
             return snap;
         }
@@ -65,23 +65,37 @@ public class ProvisioningService {
         return degraded;
     }
 
-    private List<Permission> mapDataPermissions(List<PermissionRuntimeDto> list) {
+    private List<Permission> mapDataPermissions(List<PermissionItemDto> list) {
         if (list == null || list.isEmpty()) {
             return List.of();
         }
         List<Permission> out = new ArrayList<>();
-        for (PermissionRuntimeDto d : list) {
+        for (PermissionItemDto d : list) {
             if (d == null || d.rule() == null || d.rule().isBlank()) {
                 continue;
             }
             Permission p = new Permission();
-            p.setEntity(d.entity());
+            p.setEntity(d.object());
             p.setName(d.name());
             p.setRule(d.rule());
-            p.setWeight(d.weight() == null ? 0 : d.weight());
+            p.setWeight(d.seqNo() == null ? 0 : d.seqNo());
             out.add(p);
         }
         return out;
+    }
+
+    /** 功能权限项 → 权限码集合（快照仍以 code 列表承载，便于 contains 校验）。 */
+    private List<String> codesOf(List<PermissionItemDto> list) {
+        if (list == null || list.isEmpty()) {
+            return List.of();
+        }
+        List<String> codes = new ArrayList<>();
+        for (PermissionItemDto d : list) {
+            if (d != null && d.code() != null && !d.code().isBlank()) {
+                codes.add(d.code());
+            }
+        }
+        return codes;
     }
 
     private List<String> orEmpty(List<String> l) {
